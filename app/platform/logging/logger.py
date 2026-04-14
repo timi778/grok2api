@@ -134,18 +134,39 @@ def _add_file_sink(
     global _file_sink_id
 
     _dir = log_dir or get_log_dir()
-    _dir.mkdir(parents=True, exist_ok=True)
-    _file_sink_id = logger.add(
-        str(_dir / "app_{time:YYYY-MM-DD}.log"),
-        level=file_level,
-        format=_FMT_TEXT,
-        rotation="00:00",  # new file every day at midnight
-        retention=max_files,  # keep the last N daily files
-        enqueue=True,
-        encoding="utf-8",
-        backtrace=False,
-        diagnose=False,
-    )
+    try:
+        _dir.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        fallback_dir = Path(os.getenv("TMPDIR", "/tmp")) / "logs"
+        try:
+            fallback_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as fallback_err:
+            logger.warning(
+                "File logging disabled: cannot create log dir '{}' ({}) and fallback '{}' ({}).",
+                _dir,
+                e,
+                fallback_dir,
+                fallback_err,
+            )
+            return
+        logger.warning("Log dir '{}' is not writable ({}). Falling back to '{}'.", _dir, e, fallback_dir)
+        _dir = fallback_dir
+
+    try:
+        _file_sink_id = logger.add(
+            str(_dir / "app_{time:YYYY-MM-DD}.log"),
+            level=file_level,
+            format=_FMT_TEXT,
+            rotation="00:00",
+            retention=max_files,
+            enqueue=True,
+            encoding="utf-8",
+            backtrace=False,
+            diagnose=False,
+        )
+    except OSError as e:
+        logger.warning("File logging disabled: cannot open log file in '{}' ({}).", _dir, e)
+        _file_sink_id = None
 
 
 __all__ = ["logger", "setup_logging", "reload_logging", "reload_file_logging"]
