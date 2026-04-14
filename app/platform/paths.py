@@ -15,12 +15,23 @@ def _resolve_env_path(name: str, default: str) -> Path:
     return path
 
 
+def _resolve_writable_dir(name: str, default: str) -> Path:
+    path = _resolve_env_path(name, default)
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+    except OSError:
+        fallback = Path(os.getenv("TMPDIR", "/tmp")) / default
+        fallback.mkdir(parents=True, exist_ok=True)
+        return fallback
+
+
 def data_dir() -> Path:
-    return _resolve_env_path("DATA_DIR", "data")
+    return _resolve_writable_dir("DATA_DIR", "data")
 
 
 def log_dir() -> Path:
-    return _resolve_env_path("LOG_DIR", "logs")
+    return _resolve_writable_dir("LOG_DIR", "logs")
 
 
 def data_path(*parts: str) -> Path:
