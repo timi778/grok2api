@@ -31,12 +31,12 @@ async def voice_token(request: VoiceTokenRequest):
     if _acct_dir is None:
         raise RateLimitError("Account directory not initialised")
 
-    # Voice uses auto mode, which is available on super/heavy pools only.
+    # Voice uses super/basic pools -> try super first, then basic, then heavy.
     from app.control.model.enums import ModeId
 
     ts = now_s()
     acct = await _acct_dir.reserve(
-        pool_candidates=(1, 2),
+        pool_candidates=(1, 0, 2),
         mode_id=int(ModeId.AUTO),
         now_s_override=ts,
     )
